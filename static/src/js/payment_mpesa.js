@@ -17,15 +17,8 @@ odoo.define('pos_adyen.payment', function (require) {
 
         send_payment_request: function (cid) {
             this._super.apply(this, arguments);
-            // this._reset_state();
+            this._reset_state();
             return this._mpesa_pay();
-        },
-        send_payment_cancel: function (order, cid) {
-            this._super.apply(this, arguments);
-            // set only if we are polling
-            this.was_cancelled = !!this.polling;
-            // FIXME: How to cancel mpesa payment
-            return this._mpesa_cancel();
         },
         close: function () {
             // QUESTION: What does this do?
@@ -37,7 +30,6 @@ odoo.define('pos_adyen.payment', function (require) {
             // To track if query has been cancelled 
             // QUESTION: How can we set this using the response?
             this.was_cancelled = false;
-            this.last_diagnosis_service_id = false;
             // QUESTION: What does this do?
             this.remaining_polls = 2;
             clearTimeout(this.polling);
@@ -58,9 +50,13 @@ odoo.define('pos_adyen.payment', function (require) {
             var self = this;
             return rpc.query({
                 model: 'pos.payment.method',
-                method: 'proxy_mpesa_request',
+                method: 'mpesa_stk_push',
                 // FIXME: Remove acq_id
-                args: [data],
+                args: [data, this.payment_method.mpesa_test_mode, 
+                        this.payment_method.mpesa_secrete_key,
+                        this.payment_method.mpesa_customer_key,
+                        this.payment_method.mpesa_short_code,
+                        this.payment_method.mpesa_pass_key],
             }, {
                 // When a payment terminal is disconnected it takes Adyen
                 // a while to return an error (~6s). So wait 10 seconds
@@ -70,7 +66,13 @@ odoo.define('pos_adyen.payment', function (require) {
             }).catch(this._handle_odoo_connection_failure.bind(this));
         },
 
+        _mpesa_get_account_reference: function () {
+            var config = this.pos.config;
+            return _.str.sprintf('%s (ID: %s)', config.display_name, config.id);
+        },
+
         _mpesa_pay_data: function () {
+            var config = this.pos.config;
             var order = this.pos.get_order();
             var line = order.selected_paymentline;
             var data = {
@@ -80,8 +82,9 @@ odoo.define('pos_adyen.payment', function (require) {
                 // TODO: Capture phone number from interface
                 'phone': '',
                 'order_id': order.uid, // not sure if that is the id
-            }
-            return data
+                'shop_name': this._mpesa_get_account_reference(config)
+            };
+            return data;
         },
 
         _mpesa_pay: function () {
@@ -93,41 +96,24 @@ odoo.define('pos_adyen.payment', function (require) {
             });
         },
 
-        // _mpesa_cancel: function (ignore_error) {
-        //     // FIXME: Ignore error may not be for us
-        //     // var previous_service_id = this.most_recent_service_id;
-        //     var header = {
-                
-        //     }
-    
-        //     var data = {
-        //         // Add data for mpesa cancel
-        //     };
-    
-        //     return this._call_mpesa(data).then(function (data) {
-    
-        //         // Only valid response is a 200 OK HTTP response which is
-        //         // represented by true.
-        //         // FIXME: Make apt for mpesa :: data?
-        //         if (! ignore_error && data !== true) {
-        //             self._show_error(_('Cancelling the payment failed. Please cancel it manually on the payment terminal.'));
-        //         }
-        //     });
-        // },
-
         _poll_for_response: function (resolve, reject) {
             var self = this;
-            // FIXME: Where is was_cancelled set?
+
+            // QUESTION: Where is was_cancelled set?
             if (this.was_cancelled) {
                 resolve(false);
                 return Promise.resolve();
             }
-    
+            
+            var line = this.pos.get_order().selected_paymentline;
             return rpc.query({
                 model: 'pos.payment.method',
                 method: 'get_latest_mpesa_status',
                 args: [
                     this.payment_method.id,
+                    this.payment_method.mpesa_short_code,
+                    this.payment_method.mpesa_pass_key,
+                    line.transaction_id
                     // FIXME: Send tx ref or order id
                 ],
             }, {
@@ -137,50 +123,25 @@ odoo.define('pos_adyen.payment', function (require) {
                 reject();
                 return self._handle_odoo_connection_failure(data);
             }).then(function (status) {
-                var status = status.tx_status;
-                var transaction_id = status.tx_id;
-                var transaction_reference = status.tx_ref;
+                
                 var order = self.pos.get_order();
-                var line = order.selected_paymentline;
+                var result_code = status.ResultCode
+                
+                // FIXME: Sort this out :: Condition to shift/set polling
+                // if () {
+                //     self.remaining_polls = 2;
+                // } else {
+                //     self.remaining_polls--;
+                // }
     
-                // FIXME: Sort this out
-                if (self.status !== 'pending') {
-                    self.remaining_polls = 2;
-                } else {
-                    self.remaining_polls--;
-                }
-    
-                if (self.status !== 'done') {
-                    // var response = notification.SaleToPOIResponse.PaymentResponse.Response;
-                    // var additional_response = new URLSearchParams(response.AdditionalResponse);
-    
-                    if (self.status !== 'done') {
-                        var config = self.pos.config;
-                        // var payment_response = notification.SaleToPOIResponse.PaymentResponse;
-                        var customer_receipt = transaction_reference;
-    
-                        if (customer_receipt) {
-                            line.set_receipt_info(self._convert_receipt_info(customer_receipt.OutputContent.OutputText));
-                        }
-    
-                        line.transaction_id = additional_response.get('pspReference');
-                        // line.card_type = additional_response.get('cardType');
-                        resolve(true);
-                    } else {
-                        // FIXME: Carry messages from tx to pos interfaces
-                        self._show_error(_.str.sprintf(_t('Message from Mpesa: %s'), 'Cancelled'));
-    
-                        // this means the transaction was cancelled by pressing the cancel button on the device
-                        // if (self.status !== 'done')) {
-                        //     resolve(false);
-                        // } else {
-                        //     line.set_payment_status('force_done');
-                        //     reject();
-                        // }
-                    }
+                if (result_code == 0 || result_code == '0') {
+                    // TODO: Set mpesa_receipt_number here
+                    resolve(true);
+                    // FIXME: Set the line to paid
                 } else if (self.remaining_polls <= 0) {
                     self._show_error(_t('The connection to your payment terminal failed. Please check if it is still connected to the internet.'));
-                    self._mpesa_cancel();
+                    // FIXME: How important is _mpesa_cancel
+                    // self._mpesa_cancel();
                     resolve(false);
                 }
             
@@ -190,29 +151,7 @@ odoo.define('pos_adyen.payment', function (require) {
         _mpesa_handle_response: function (response) {
             var line = this.pos.get_order().selected_paymentline;
     
-            if (response.state == 'cancel') {
-                this._show_error(_t('Authentication failed. Please check your Mpesa credentials.'));
-                line.set_payment_status('force_done');
-                return Promise.resolve();
-            }
-    
-            // response = response.SaleToPOIRequest;
-            if (response.state == 'cancel') {
-                console.error('error from MPesa', response);
-    
-                var msg = '';
-                if (response.state) {
-                    // var params = new URLSearchParams(response.EventNotification.EventDetails);
-                    msg = params.get('message');
-                }
-    
-                this._show_error(_.str.sprintf(_t('An unexpected error occured. Message from Mpesa: %s'), msg));
-                if (line) {
-                    line.set_payment_status('force_done');
-                }
-    
-                return Promise.resolve();
-            } else {
+            if (response.ResponseCode == '0') {
                 line.set_payment_status('waitingCard');
     
                 // This is not great, the payment screen should be
@@ -220,7 +159,7 @@ odoo.define('pos_adyen.payment', function (require) {
                 // paymentline changes. This way the call to
                 // set_payment_status would re-render it automatically.
                 this.pos.chrome.gui.current_screen.render_paymentlines();
-    
+                line.transaction_id = response.get('CheckoutRequestID');
                 var self = this;
                 var res = new Promise(function (resolve, reject) {
                     // clear previous intervals just in case, otherwise
@@ -231,13 +170,29 @@ odoo.define('pos_adyen.payment', function (require) {
                         self._poll_for_response(resolve, reject);
                     }, 3000);
                 });
-    
+
                 // make sure to stop polling when we're done
                 res.finally(function () {
                     self._reset_state();
                 });
     
                 return res;
+                
+            } else {
+                
+                console.error('error from MPesa', response.errorMessage);
+    
+                var msg = '';
+                if (response.errorMessage) {
+                    msg = response.errorMessage;
+                }
+    
+                this._show_error(_.str.sprintf(_t('An unexpected error occured. Message from Mpesa: %s'), msg));
+                if (line) {
+                    line.set_payment_status('force_done');
+                }
+    
+                return Promise.resolve();
             }
         },
     

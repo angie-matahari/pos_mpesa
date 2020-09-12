@@ -3,7 +3,7 @@ import json
 import requests
 import logging
 
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
@@ -14,8 +14,14 @@ class PosPaymentMethod(models.Model):
     def _get_payment_terminal_selection(self):
         return super(PosPaymentMethod, self)._get_payment_terminal_selection() + [('adyen', 'Adyen')]
 
-    # FIXME: We should list only enabled or test and mpesa type acquirers
-    mpesa_pos_acquirer_id = fields.Many2one('payment_acquirer', string='Mpesa Acquirer')
+    # TODO: Add phone number check
+    # TODO: Add currency exchange on amount
+    mpesa_secrete_key = fields.Char("Secret key", required_if_provider="mpesa")
+    mpesa_customer_key = fields.Char("Customer key", 
+                                    required_if_provider="mpesa")
+    mpesa_short_code = fields.Char("Shortcode", required_if_provider="mpesa")
+    mpesa_pass_key = fields.Char("Pass key", required_if_provider="mpesa")
+    mpesa_test_mode = fields.Boolean(help='Run transactions in the test environment.', default=True)
 
     @api.constrains('mpesa_pos_acquirer_id')
     def _check_mpesa_terminal_identifier(self):
@@ -29,55 +35,99 @@ class PosPaymentMethod(models.Model):
                 raise ValidationError(_('Terminal %s is already used on payment method %s.')
                                       % (payment_method.mpesa_pos_acquirer_id, existing_payment_method.display_name))
 
-    # FIXME: Use the tx_id
+    # FIXME: Do we know exactly which payment_method_id we want
     @api.model
-    def get_latest_mpesa_status(self, payment_method_id, reference):
+    def get_latest_mpesa_status(self, payment_method_id, short_code, passkey, checkout_request_id):
         '''
         '''
-        payment_method = self.sudo().browse(payment_method_id)
-        tx = self.env['payment.transaction'].sudo().search([('reference', '=', reference)])
-        # payment_method.adyen_latest_response
-        # latest_response = json.loads(latest_response) if latest_response else False
-        # payment_method.adyen_latest_response = ''  # avoid handling old responses multiple times
+        values = {}
+        time_stamp = str(time.strftime('%Y%m%d%H%M%S'))
+        passkey = self.mpesa_short_code + self.mpesa_pass_key + time_stamp
+        password = str(base64.b64encode(passkey.encode('utf-8')), 'utf-8')
+        url = 'https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query'
 
-        return {
-            'tx_status': tx.state,
-            'tx_id': tx.id,
-            'tx_ref': tx.reference,
-        }
+        values.update({
+            "BusinessShortCode": self.mpesa_short_code,
+            "Password": password,
+            "Timestamp": time_stamp,
+            "CheckoutRequestID": checkout_request_id
+        })
+        
+        return self.mpesa_api_call(url, values)
 
     @api.model
-    def proxy_mpesa_request(self, data):
-        # FIXME: Streamline how to get the reference
-        # DEBUG: Add all imports
-        # QUESTION: Does the payment know itself when called from client side? 
-        reference_values = data['order_id']
-        reference = self.env['payment.transaction']._compute_reference(values=reference_values) 
+    def mpesa_stk_push(self, data, test_mode, secrete_key, customer_key, short_code, passkey):
+        url = 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
+        time_stamp = str(time.strftime('%Y%m%d%H%M%S'))
+        passkey = self.mpesa_short_code + self.mpesa_pass_key + time_stamp
+        password = str(base64.b64encode(passkey.encode('utf-8')), 'utf-8')
+        callback = ''
         values = {
-            'acquirer_id': self.mpesa_pos_acquirer_id.id,
-            'reference': reference,
-            'amount': data['amount'],
-            'currency_id': data['currency_id'],
-            'mpesa_tx_phone': data['phone'],
-            'mpesa_pos_tx': True,
-            # FIXME: Actually get the id here + int()
-            'pos_order_id': int(data['order_id']),
-            'type': 'server2server',
-            # 'return_url': return_url,
-            # FIXME: Add a way for guys to relate a tx with a pos.order
+            "BusinessShortCode": self.mpesa_short_code,
+            "Password": password,
+            "Timestamp": time_stamp,
+            "PartyB": self.mpesa_short_code,
+            "CallBackURL": callback,
+            "TransactionType": 'CustomerPayBillOnline',
+            "Amount": data['amount'],
+            "PartyA": data['phone'],
+            "PhoneNumber": data['phone'],
+            "AccountReference": data['shop_name'],
+            "TransactionDesc": data['order_id']
         }
-        tx = self.env['payment.transaction'].sudo().with_context(lang=None).create(values)
-        # PaymentProcessing.add_payment_transaction(tx)
-        try:
-            tx.s2s_do_transaction()
-            # secret = request.env['ir.config_parameter'].sudo().get_param('database.secret')
-            # token_str = '%s%s%s' % (tx.id, tx.reference, tx.amount)
-            # token = hmac.new(secret.encode('utf-8'), token_str.encode('utf-8'), hashlib.sha256).hexdigest()
-            # tx.return_url = return_url or '/website_payment/confirm?tx_id=%d&access_token=%s' % (tx.id, token)
-        except Exception as e:
-            _logger.exception(e)
-        return tx.state
-        # return resp.json()
+        
+        resp = self.mpesa_api_call(url, values)
+        if not resp.ok: 
+            try:
+                resp.raise_for_status()
+            except HTTPError:
+                _logger.error(resp.text)
+                mpesa_error = resp.json().get('errorMessage', {})
+                error_msg = " " + (_("MPesa gave us the following info about the problem: '%s'") % mpesa_error)
+                raise ValidationError(error_msg)
+        
+        self.mpesa_create_transaction(values, resp)
+        return resp.json()
+
+    def mpesa_api_call(self, url, values={}, auth=False):
+        self.ensure_one()
+        
+        if auth:
+            response = requests.get(url, auth=HTTPBasicAuth(
+                self.mpesa_customer_key, self.mpesa_secrete_key))
+            json_data = json.loads(response.text)
+            return json_data['access_token']
+        headers = {
+            'Authorization': 'Bearer %s' % self._mpesa_get_access_token()
+            }
+        resp = requests.post(url, json=values, headers=headers)
+
+        return resp.json()
+
+    def _mpesa_get_access_token(self):
+        url = 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
+        return self.mpesa_request(url, auth=True)
+
+    def get_base_url(self):
+        self.ensure_one()
+        # priority is always given to url_root
+        # from the request
+        url = ''
+        if request:
+            url = request.httprequest.url_root
+
+        if not url and 'website_id' in self and self.website_id:
+            url = self.website_id._get_http_domain()
+
+        return url or self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+
+    def mpesa_create_transaction(self, values, resp):
+        self.env['pos.mpesa.payment'].sudo().create({
+            'amount': values['Amount'],
+            'checkout_request_id': resp['CheckoutRequestID'],
+            'phone_number': values['PartyA'],
+            'payment_method_id': self,
+        })
 
     @api.onchange('use_payment_terminal')
     def _onchange_use_payment_terminal(self):
@@ -85,3 +135,9 @@ class PosPaymentMethod(models.Model):
         if self.use_payment_terminal != 'mpesa':
             self.mpesa_pos_acquirer_id = False
             
+
+class PosPayment(models.Model):
+
+    _inherit = 'pos.payment'
+
+    mpesa_receipt = fields.Char(string='Mpesa Receipt No.')
