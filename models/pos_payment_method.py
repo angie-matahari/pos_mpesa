@@ -12,7 +12,7 @@ class PosPaymentMethod(models.Model):
     _inherit = 'pos.payment.method'
 
     def _get_payment_terminal_selection(self):
-        return super(PosPaymentMethod, self)._get_payment_terminal_selection() + [('adyen', 'Adyen')]
+        return super(PosPaymentMethod, self)._get_payment_terminal_selection() + [('mpesa', 'Mpesa')]
 
     # TODO: Add phone number check
     # TODO: Add currency exchange on amount
