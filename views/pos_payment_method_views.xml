@@ -6,11 +6,17 @@
       <field name="inherit_id" ref="point_of_sale.pos_payment_method_view_form"/>
       <field name="arch" type="xml">
           <xpath expr="//field[@name='use_payment_terminal']" position="after">
-                <field name="mpesa_pos_acquirer_id"
+                <field name="mpesa_secrete_key"
                         attrs="{'invisible': [('use_payment_terminal', '!=', 'mpesa')], 'required': [('use_payment_terminal', '=', 'mpesa')]}"/>
-                <!-- <field name="adyen_terminal_identifier" attrs="{'invisible': [('use_payment_terminal', '!=', 'adyen')], 'required': [('use_payment_terminal', '=', 'adyen')]}"/> -->
-                <!-- <field name="adyen_test_mode" attrs="{'invisible': [('use_payment_terminal', '!=', 'adyen')]}"/> -->
-          </xpath>
+                <field name="mpesa_customer_key"
+                        attrs="{'invisible': [('use_payment_terminal', '!=', 'mpesa')], 'required': [('use_payment_terminal', '=', 'mpesa')]}"/>
+                <field name="mpesa_short_code"
+                        attrs="{'invisible': [('use_payment_terminal', '!=', 'mpesa')], 'required': [('use_payment_terminal', '=', 'mpesa')]}"/>
+                <field name="mpesa_pass_key"
+                        attrs="{'invisible': [('use_payment_terminal', '!=', 'mpesa')], 'required': [('use_payment_terminal', '=', 'mpesa')]}"/>
+                <field name="mpesa_test_mode"
+                        attrs="{'invisible': [('use_payment_terminal', '!=', 'mpesa')], 'required': [('use_payment_terminal', '=', 'mpesa')]}"/>
+                </xpath>
       </field>
     </record>
 </odoo>
