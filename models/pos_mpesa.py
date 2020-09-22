@@ -26,6 +26,27 @@ class PosMpesaPayment(models.Model):
     payment_date = fields.Datetime(string='Date', required=True, readonly=True, default=lambda self: fields.Datetime.now())
 
     @api.model
-    def feedback(self, ):
-        
-        pass
+    def feedback(self, post):
+        checkout_request_id = post.get('CheckoutRequestID')
+        if not checkout_request_id:
+            error_msg = _('Mpesa: received data with missing reference (%s)') % (checkout_request_id)
+            _logger.info(error_msg)
+            raise ValidationError(error_msg)
+
+        tx = self.env['pos.mpesa.payment'].search([('checkout_request_id', '=', checkout_request_id)])
+
+        if not tx or len(tx) > 1:
+            error_msg = _('Mpesa: received data for CheckoutRequestID %s') % (checkout_request_id)
+            if not tx:
+                error_msg += _('; no order found')
+            else:
+                error_msg += _('; multiple order found')
+            _logger.info(error_msg)
+            raise ValidationError(error_msg)
+
+        # TODO: Capture receipt_number
+        # TODO: Create customer and assign to this payment
+        tx.write({
+            'receipt_number': 'RECEIPT'
+        })
+        # pass
