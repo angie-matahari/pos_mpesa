@@ -1,4 +1,4 @@
-odoo.define('pos_adyen.models', function (require) {
+odoo.define('pos_mpesa.models', function (require) {
     var models = require('point_of_sale.models');
     var PaymentMpesa = require('pos_mpesa.payment');
     

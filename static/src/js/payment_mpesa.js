@@ -1,4 +1,4 @@
-odoo.define('pos_adyen.payment', function (require) {
+odoo.define('pos_mpesa.payment', function (require) {
     "use strict";
 
     var core = require('web.core');
@@ -18,6 +18,8 @@ odoo.define('pos_adyen.payment', function (require) {
         send_payment_request: function (cid) {
             this._super.apply(this, arguments);
             this._reset_state();
+            // render pop up
+            
             return this._mpesa_pay();
         },
         close: function () {
@@ -134,10 +136,12 @@ odoo.define('pos_adyen.payment', function (require) {
                 //     self.remaining_polls--;
                 // }
     
-                if (result_code == 0 || result_code == '0') {
+                if (result_code === 0 || result_code === '0') {
                     // TODO: Set mpesa_receipt_number here
+                    // TODO: Set client here
+                    // QUESTION: How do we find our mpesa payment
                     resolve(true);
-                    // FIXME: Set the line to paid
+                    // QUESTION: Set the line to paid,how? where?
                 } else if (self.remaining_polls <= 0) {
                     self._show_error(_t('The connection to your payment terminal failed. Please check if it is still connected to the internet.'));
                     // FIXME: How important is _mpesa_cancel
@@ -151,7 +155,7 @@ odoo.define('pos_adyen.payment', function (require) {
         _mpesa_handle_response: function (response) {
             var line = this.pos.get_order().selected_paymentline;
     
-            if (response.ResponseCode == '0') {
+            if (response.ResponseCode === '0') {
                 line.set_payment_status('waitingCard');
     
                 // This is not great, the payment screen should be
