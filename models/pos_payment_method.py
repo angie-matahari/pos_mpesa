@@ -12,6 +12,7 @@ from requests.auth import HTTPBasicAuth
 from requests.exceptions import HTTPError
 
 from odoo import models, fields, api, _
+from odoo.http import request
 from odoo.exceptions import ValidationError
 from odoo.addons.pos_mpesa.controllers.main import PosMpesaController
 
@@ -123,8 +124,8 @@ class PosPaymentMethod(models.Model):
         # priority is always given to url_root
         # from the request
         url = ''
-        if requests:
-            url = requests.httprequest.url_root
+        if request:
+            url = request.httprequest.url_root
 
         if not url and 'website_id' in self and self.website_id:
             url = self.website_id._get_http_domain()
