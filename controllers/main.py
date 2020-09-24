@@ -9,6 +9,7 @@ from odoo.http import request
 _logger = logging.getLogger(__name__)
 
 class PosMpesaController(http.Controller):
+    _callback_url = '/payment/mpesa/callback/'
 
     @http.route(
         ['/payment/mpesa/callback/'], type='json', auth='none', methods=['POST'], 

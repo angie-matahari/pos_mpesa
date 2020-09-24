@@ -5,11 +5,15 @@ import time
 import base64
 import re
 import requests
+
+from werkzeug import urls
+
 from requests.auth import HTTPBasicAuth
 from requests.exceptions import HTTPError
 
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
+from odoo.addons.pos_mpesa.controllers.main import PosMpesaController
 
 _logger = logging.getLogger(__name__)
 
@@ -42,40 +46,36 @@ class PosPaymentMethod(models.Model):
 
     # FIXME: Do we know exactly which payment_method_id we want
     @api.model
-    def get_latest_mpesa_status(self, payment_method_id, short_code, passkey, checkout_request_id):
+    def get_latest_mpesa_status(self, payment_method_id, short_code, pass_key, customer_key, secrete_key, checkout_request_id):
         '''
         '''
         values = {}
-        time_stamp = str(time.strftime('%Y%m%d%H%M%S'))
-        _logger.info(type(time_stamp))
-        _logger.info(type(self.mpesa_short_code))
-        _logger.info(type(self.mpesa_pass_key))
-        passkey = self.mpesa_short_code + self.mpesa_pass_key + time_stamp
-        password = str(base64.b64encode(passkey.encode('utf-8')), 'utf-8')
+        
         url = 'https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query'
-
+        time_stamp, password = self.get_timestamp_passkey(short_code, pass_key)
         values.update({
-            "BusinessShortCode": self.mpesa_short_code,
+            "BusinessShortCode": short_code,
             "Password": password,
             "Timestamp": time_stamp,
             "CheckoutRequestID": checkout_request_id
         })
         
-        return self.mpesa_api_call(url, values)
+        headers = {
+            'Authorization': 'Bearer %s' % self._mpesa_get_access_token(customer_key, secrete_key)
+            }
+        resp = requests.post(url, json=values, headers=headers)
+        resp = resp.json()
 
     @api.model
     def mpesa_stk_push(self, data, test_mode, secrete_key, customer_key, short_code, pass_key):
         url = 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
-        time_stamp = str(time.strftime('%Y%m%d%H%M%S'))
-        passkey = short_code + pass_key + time_stamp
-        password = str(base64.b64encode(passkey.encode('utf-8')), 'utf-8')
-        callback = ''
+        time_stamp, password = self.get_timestamp_passkey(short_code, pass_key)
         values = {
-            "BusinessShortCode": self.mpesa_short_code,
+            "BusinessShortCode": short_code,
             "Password": password,
             "Timestamp": time_stamp,
-            "PartyB": self.mpesa_short_code,
-            "CallBackURL": callback,
+            "PartyB": short_code,
+            "CallBackURL": self.get_callback(),
             "TransactionType": 'CustomerPayBillOnline',
             "Amount": data['amount'],
             "PartyA": data['phone'] or '254701823543',
@@ -84,7 +84,11 @@ class PosPaymentMethod(models.Model):
             "TransactionDesc": data['order_id']
         }
         
-        resp = self.mpesa_api_call(url, values)
+        headers = {
+            'Authorization': 'Bearer %s' % self._mpesa_get_access_token(customer_key, secrete_key)
+            }
+        resp = requests.post(url, json=values, headers=headers)
+        resp = resp.json()
         if not resp.ok: 
             try:
                 resp.raise_for_status()
@@ -97,23 +101,22 @@ class PosPaymentMethod(models.Model):
         self.mpesa_create_transaction(values, resp)
         return resp.json()
 
-    def mpesa_api_call(self, url, values={}, auth=False):
-        # self.ensure_one()
-        if auth:
-            response = requests.get(url, auth=HTTPBasicAuth(
-                self.mpesa_customer_key, self.mpesa_secrete_key))
-            json_data = json.loads(response.text)
-            return json_data['access_token']
-        headers = {
-            'Authorization': 'Bearer %s' % self._mpesa_get_access_token()
-            }
-        resp = requests.post(url, json=values, headers=headers)
+    def get_timestamp_passkey(self, short_code, pass_key):
+        time_stamp = str(time.strftime('%Y%m%d%H%M%S'))
+        passkey = short_code + pass_key + time_stamp
+        password = str(base64.b64encode(passkey.encode('utf-8')), 'utf-8')
+        return time_stamp, password
 
-        return resp.json()
+    def get_callback(self):
+        base_url = self.get_base_url()
+        return urls.url_join(base_url, PosMpesaController._callback_url)
 
-    def _mpesa_get_access_token(self):
+    def _mpesa_get_access_token(self, customer_key, secrete_key):
         url = 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
-        return self.mpesa_api_call(url, auth=True)
+        response = requests.get(url, auth=HTTPBasicAuth(
+                customer_key, secrete_key))
+        json_data = json.loads(response.text)
+        return json_data['access_token']
 
     def get_base_url(self):
         # self.ensure_one()
