@@ -98,7 +98,7 @@ class PosPaymentMethod(models.Model):
         return resp.json()
 
     def mpesa_api_call(self, url, values={}, auth=False):
-        self.ensure_one()
+        # self.ensure_one()
         
         if auth:
             response = requests.get(url, auth=HTTPBasicAuth(
