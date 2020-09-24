@@ -47,6 +47,9 @@ class PosPaymentMethod(models.Model):
         '''
         values = {}
         time_stamp = str(time.strftime('%Y%m%d%H%M%S'))
+        _logger.info(type(time_stamp))
+        _logger.info(type(self.mpesa_short_code))
+        _logger.info(type(self.mpesa_pass_key))
         passkey = self.mpesa_short_code + self.mpesa_pass_key + time_stamp
         password = str(base64.b64encode(passkey.encode('utf-8')), 'utf-8')
         url = 'https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query'
