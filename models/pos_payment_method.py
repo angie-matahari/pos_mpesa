@@ -99,7 +99,6 @@ class PosPaymentMethod(models.Model):
 
     def mpesa_api_call(self, url, values={}, auth=False):
         # self.ensure_one()
-        
         if auth:
             response = requests.get(url, auth=HTTPBasicAuth(
                 self.mpesa_customer_key, self.mpesa_secrete_key))
@@ -114,10 +113,10 @@ class PosPaymentMethod(models.Model):
 
     def _mpesa_get_access_token(self):
         url = 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
-        return self.mpesa_request(url, auth=True)
+        return self.mpesa_api_call(url, auth=True)
 
     def get_base_url(self):
-        self.ensure_one()
+        # self.ensure_one()
         # priority is always given to url_root
         # from the request
         url = ''
