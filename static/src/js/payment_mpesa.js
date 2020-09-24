@@ -16,6 +16,7 @@ odoo.define('pos_mpesa.payment', function (require) {
         // enable_reversals()
 
         send_payment_request: function (cid) {
+            console.log('send payment request')
             this._super.apply(this, arguments);
             this._reset_state();
             // render pop up
@@ -24,11 +25,13 @@ odoo.define('pos_mpesa.payment', function (require) {
         },
         close: function () {
             // QUESTION: What does this do?
+            console.log('close')
             this._super.apply(this, arguments);
         },
 
         // private methods
         _reset_state: function () {
+            console.log('reset state')
             // To track if query has been cancelled 
             // QUESTION: How can we set this using the response?
             this.was_cancelled = false;
@@ -39,6 +42,7 @@ odoo.define('pos_mpesa.payment', function (require) {
 
         _handle_odoo_connection_failure: function (data) {
             // handle timeout
+            console.log('handle odoo connection failure')
             var line = this.pos.get_order().selected_paymentline;
             if (line) {
                 line.set_payment_status('retry');
@@ -49,6 +53,7 @@ odoo.define('pos_mpesa.payment', function (require) {
         },
 
         _call_mpesa: function (data) {
+            console.log("call mpesa rpc query")
             var self = this;
             return rpc.query({
                 model: 'pos.payment.method',
@@ -70,10 +75,12 @@ odoo.define('pos_mpesa.payment', function (require) {
 
         _mpesa_get_account_reference: function () {
             var config = this.pos.config;
+            console.log('mpesa get account reference')
             return _.str.sprintf('%s (ID: %s)', config.display_name, config.id);
         },
 
         _mpesa_pay_data: function () {
+            console.log('mpesa pay data')
             var config = this.pos.config;
             var order = this.pos.get_order();
             var line = order.selected_paymentline;
@@ -90,6 +97,7 @@ odoo.define('pos_mpesa.payment', function (require) {
         },
 
         _mpesa_pay: function () {
+            console.log('mpesa pay')
             var self = this;
             var data = this._mpesa_pay_data();
     
@@ -99,6 +107,7 @@ odoo.define('pos_mpesa.payment', function (require) {
         },
 
         _poll_for_response: function (resolve, reject) {
+            console.log('poll for response')
             var self = this;
 
             // QUESTION: Where is was_cancelled set?
@@ -153,6 +162,7 @@ odoo.define('pos_mpesa.payment', function (require) {
         },
 
         _mpesa_handle_response: function (response) {
+            console.log('mpesa handle response')
             var line = this.pos.get_order().selected_paymentline;
     
             if (response.ResponseCode === '0') {
@@ -201,6 +211,7 @@ odoo.define('pos_mpesa.payment', function (require) {
         },
     
         _show_error: function (msg, title) {
+            console.log('show error')
             if (!title) {
                 title =  _t('MPesa Error');
             }

@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 import json
-import requests
 import logging
+import time
+import base64
+import re
+import requests
+from requests.auth import HTTPBasicAuth
+from requests.exceptions import HTTPError
 
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
@@ -113,8 +118,8 @@ class PosPaymentMethod(models.Model):
         # priority is always given to url_root
         # from the request
         url = ''
-        if request:
-            url = request.httprequest.url_root
+        if requests:
+            url = requests.httprequest.url_root
 
         if not url and 'website_id' in self and self.website_id:
             url = self.website_id._get_http_domain()
