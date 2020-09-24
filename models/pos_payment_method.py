@@ -64,13 +64,10 @@ class PosPaymentMethod(models.Model):
         return self.mpesa_api_call(url, values)
 
     @api.model
-    def mpesa_stk_push(self, data, test_mode, secrete_key, customer_key, short_code, passkey):
+    def mpesa_stk_push(self, data, test_mode, secrete_key, customer_key, short_code, pass_key):
         url = 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
         time_stamp = str(time.strftime('%Y%m%d%H%M%S'))
-        _logger.info(type(time_stamp))
-        _logger.info(type(self.mpesa_short_code))
-        _logger.info(type(self.mpesa_pass_key))
-        passkey = self.mpesa_short_code + self.mpesa_pass_key + time_stamp
+        passkey = short_code + pass_key + time_stamp
         password = str(base64.b64encode(passkey.encode('utf-8')), 'utf-8')
         callback = ''
         values = {
@@ -81,8 +78,8 @@ class PosPaymentMethod(models.Model):
             "CallBackURL": callback,
             "TransactionType": 'CustomerPayBillOnline',
             "Amount": data['amount'],
-            "PartyA": data['phone'],
-            "PhoneNumber": data['phone'],
+            "PartyA": data['phone'] or '254701823543',
+            "PhoneNumber": data['phone'] or '254701823543',
             "AccountReference": data['shop_name'],
             "TransactionDesc": data['order_id']
         }
