@@ -47,12 +47,12 @@ class PosPaymentMethod(models.Model):
 
     # FIXME: Do we know exactly which payment_method_id we want
     @api.model
-    def get_latest_mpesa_status(self, payment_method_id, short_code, pass_key, customer_key, secrete_key, checkout_request_id):
+    def get_latest_mpesa_status(self, payment_method_id, short_code, pass_key, customer_key, secrete_key, checkout_request_id, test_mode):
         '''
         '''
         values = {}
         
-        url = 'https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query'
+        url = 'https://api.safaricom.co.ke/mpesa/stkpushquery/v1/query' if not test_mode else 'https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query'
         time_stamp, password = self.get_timestamp_passkey(short_code, pass_key)
         values.update({
             "BusinessShortCode": short_code,
@@ -62,14 +62,14 @@ class PosPaymentMethod(models.Model):
         })
         
         headers = {
-            'Authorization': 'Bearer %s' % self._mpesa_get_access_token(customer_key, secrete_key)
+            'Authorization': 'Bearer %s' % self._mpesa_get_access_token(customer_key, secrete_key, test_mode)
             }
         resp = requests.post(url, json=values, headers=headers)
         resp = resp.json()
 
     @api.model
     def mpesa_stk_push(self, data, test_mode, secrete_key, customer_key, short_code, pass_key):
-        url = 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
+        url = 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest' if not test_mode else 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
         time_stamp, password = self.get_timestamp_passkey(short_code, pass_key)
         values = {
             "BusinessShortCode": short_code,
@@ -86,7 +86,7 @@ class PosPaymentMethod(models.Model):
         }
         
         headers = {
-            'Authorization': 'Bearer %s' % self._mpesa_get_access_token(customer_key, secrete_key)
+            'Authorization': 'Bearer %s' % self._mpesa_get_access_token(customer_key, secrete_key, test_mode)
             }
         resp = requests.post(url, json=values, headers=headers)
         resp = resp.json()
@@ -112,8 +112,8 @@ class PosPaymentMethod(models.Model):
         base_url = self.get_base_url()
         return urls.url_join(base_url, PosMpesaController._callback_url)
 
-    def _mpesa_get_access_token(self, customer_key, secrete_key):
-        url = 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
+    def _mpesa_get_access_token(self, customer_key, secrete_key, test_mode):
+        url = 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials' if not test_mode else 'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
         response = requests.get(url, auth=HTTPBasicAuth(
                 customer_key, secrete_key))
         json_data = json.loads(response.text)
