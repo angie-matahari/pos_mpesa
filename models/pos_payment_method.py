@@ -117,7 +117,7 @@ class PosPaymentMethod(models.Model):
         _logger.info('customer key: %s', customer_key)
         _logger.info('secrete key: %s', secrete_key)
         _logger.info(' access token url: %s', url)
-        response = requests.get(url, auth=HTTPBasicAuth(
+        response = requests.get('https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', auth=HTTPBasicAuth(
                 customer_key, secrete_key))
         _logger.info('access token response: %s', response)
         json_data = json.loads(response.text)
