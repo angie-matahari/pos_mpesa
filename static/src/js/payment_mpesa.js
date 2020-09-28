@@ -20,7 +20,7 @@ odoo.define('pos_mpesa.payment', function (require) {
             this._super.apply(this, arguments);
             this._reset_state();
             // render pop up
-            
+            // TODO: Get/Check for phone number here
             return this._mpesa_pay();
         },
         close: function () {
@@ -54,6 +54,7 @@ odoo.define('pos_mpesa.payment', function (require) {
 
         _call_mpesa: function (data) {
             console.log("call mpesa rpc query")
+            console.log('test mode: %s', this.payment_method.mpesa_test_mode)
             var self = this;
             return rpc.query({
                 model: 'pos.payment.method',
