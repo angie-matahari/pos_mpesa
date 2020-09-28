@@ -89,7 +89,6 @@ class PosPaymentMethod(models.Model):
             'Authorization': 'Bearer %s' % self._mpesa_get_access_token(customer_key, secrete_key, test_mode)
             }
         resp = requests.post('https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', json=values, headers=headers)
-        resp = resp.json()
         if not resp.ok: 
             try:
                 resp.raise_for_status()
