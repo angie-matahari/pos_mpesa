@@ -60,7 +60,6 @@ class PosPaymentMethod(models.Model):
             "Timestamp": time_stamp,
             "CheckoutRequestID": checkout_request_id
         })
-        
         headers = {
             'Authorization': 'Bearer %s' % self._mpesa_get_access_token(customer_key, secrete_key, test_mode)
             }
@@ -88,7 +87,7 @@ class PosPaymentMethod(models.Model):
         headers = {
             'Authorization': 'Bearer %s' % self._mpesa_get_access_token(customer_key, secrete_key, test_mode)
             }
-        resp = requests.post('https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', json=values, headers=headers)
+        resp = requests.post(url, json=values, headers=headers)
         if not resp.ok: 
             try:
                 resp.raise_for_status()
@@ -113,11 +112,8 @@ class PosPaymentMethod(models.Model):
 
     def _mpesa_get_access_token(self, customer_key, secrete_key, test_mode):
         url = 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials' if not test_mode else 'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
-        _logger.info('customer key: %s', test_mode)
-        _logger.info(' access token url: %s', url)
-        response = requests.get('https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', auth=HTTPBasicAuth(
+        response = requests.get(url, auth=HTTPBasicAuth(
                 customer_key, secrete_key))
-        _logger.info('access token response: %s', response)
         json_data = json.loads(response.text)
         return json_data['access_token']
 
