@@ -14,7 +14,14 @@ odoo.define('pos_mpesa.payment', function (require) {
         // Consider an init to support reversals
         // How to call a funct in js and where to call
         // enable_reversals()
-
+        init: function (pos, payment_method) {
+            var self = this;
+            this._super(pos, payment_method);
+            this.phone = null;
+        },
+        set_phone: function (phone) {
+            this.phone = phone;
+        },
         send_payment_request: function (cid) {
             console.log('send payment request')
             this._super.apply(this, arguments);
