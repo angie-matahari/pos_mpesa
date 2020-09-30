@@ -27,9 +27,15 @@ odoo.define('pos_mpesa.payment', function (require) {
             console.log('send payment request')
             this._super.apply(this, arguments);
             this._reset_state();
-            // render pop up
-            // TODO: Get/Check for phone number here
-            return this._mpesa_pay();
+            if (this.phone === null) {
+                this._show_error(_.str.sprintf(_t('Please put in a phone number.')));
+                line.set_payment_status('retry');
+                // TODO: Add a return similar to what _mpesa_pay would return, just opposite
+            }
+            else {
+                return this._mpesa_pay();
+            }
+            
         },
         close: function () {
             // QUESTION: What does this do?
