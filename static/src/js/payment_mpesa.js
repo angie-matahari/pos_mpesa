@@ -18,6 +18,7 @@ odoo.define('pos_mpesa.payment', function (require) {
             var self = this;
             this._super(pos, payment_method);
             this.phone = null;
+            this.mpesa_terminal = true;
         },
         set_phone: function (phone) {
             this.phone = phone;
@@ -97,7 +98,7 @@ odoo.define('pos_mpesa.payment', function (require) {
                 'amount': line.amount,
                 'currency_id': this.pos.currency.name,
                 // TODO: Capture phone number from interface
-                'phone': '',
+                'phone': this.phone,
                 'order_id': order.uid, // not sure if that is the id
                 'shop_name': this._mpesa_get_account_reference(config)
             };
