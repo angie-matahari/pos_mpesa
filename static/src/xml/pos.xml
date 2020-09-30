@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-extend="PaymentScreenElectronicPayment">
+        <t t-jquery=".send_request" t-operation="after">
+            <tr class="paymentline electronic_payment">
+                <t t-if="line.payment_status == 'pending' and line.payment_method.payment_terminal.mpesa_terminal">
+                    <td colspan="3">
+                        Phone Number
+                    </td>
+                    <td colspan="2">
+                        <input placeholder="07XXXX" id="phone" class="phone"/>
+                    </td>
+                </t>
+            </tr>
+        </t>
+    </t>
+</templates>
