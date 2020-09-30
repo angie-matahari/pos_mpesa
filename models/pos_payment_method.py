@@ -124,10 +124,6 @@ class PosPaymentMethod(models.Model):
         url = ''
         if request:
             url = request.httprequest.url_root
-
-        if not url and 'website_id' in self and self.website_id:
-            url = self.website_id._get_http_domain()
-
         return url or self.env['ir.config_parameter'].sudo().get_param('web.base.url')
 
     def mpesa_create_transaction(self, values, resp):
