@@ -33,19 +33,13 @@ odoo.define('pos_mpesa.screens', function (require) {
 	           	window.document.body.removeEventListener('keypress',self.keyboard_handler);
 	           	window.document.body.removeEventListener('keydown',self.keyboard_keydown_handler);
             });
-            self.$("#phone").select(function() {
-                console.log('select')
-            	$('body').off('keypress',self.keyboard_handler);
-               	$('body').off('keydown',self.keyboard_keydown_handler);
-	           	window.document.body.removeEventListener('keypress',self.keyboard_handler);
-	           	window.document.body.removeEventListener('keydown',self.keyboard_keydown_handler);
-            });
             self.$("#phone").focusout(function() {
                 console.log('focusout')
                 window.document.body.addEventListener('keypress',self.keyboard_handler);
                 window.document.body.addEventListener('keydown',self.keyboard_keydown_handler);
             });
             this.$el.find('.send_payment_request').click(function () {
+                console.log('send payment request')
                 var cid = $(this).data('cid');
                 // Other payment lines can not be reversed anymore
                 order.get_paymentlines().forEach(function (line) {
@@ -56,6 +50,7 @@ odoo.define('pos_mpesa.screens', function (require) {
                 var payment_terminal = line.payment_method.payment_terminal;
                 // TODO: If mpesa terminal clause, do the next two lines
                 var phone = self.$("#phone").val(); // Capture phone number
+                console.log('phone: %s', phone);
                 payment_terminal.set_phone(phone); // Set it to the payment terminal
                 line.set_payment_status('waiting');
                 self.render_paymentlines();
