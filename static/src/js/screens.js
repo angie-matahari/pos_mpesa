@@ -19,7 +19,32 @@ odoo.define('pos_mpesa.screens', function (require) {
             if (!order) {
                 return;
             }
-    
+            self.$("#phone").focus(function() {
+                console.log('focus')
+            	$('body').off('keypress',self.keyboard_handler);
+               	$('body').off('keydown',self.keyboard_keydown_handler);
+	           	window.document.body.removeEventListener('keypress',self.keyboard_handler);
+	           	window.document.body.removeEventListener('keydown',self.keyboard_keydown_handler);
+            });
+            self.$("#phone").focusin(function() {
+                console.log('focusin')
+            	$('body').off('keypress',self.keyboard_handler);
+               	$('body').off('keydown',self.keyboard_keydown_handler);
+	           	window.document.body.removeEventListener('keypress',self.keyboard_handler);
+	           	window.document.body.removeEventListener('keydown',self.keyboard_keydown_handler);
+            });
+            self.$("#phone").select(function() {
+                console.log('select')
+            	$('body').off('keypress',self.keyboard_handler);
+               	$('body').off('keydown',self.keyboard_keydown_handler);
+	           	window.document.body.removeEventListener('keypress',self.keyboard_handler);
+	           	window.document.body.removeEventListener('keydown',self.keyboard_keydown_handler);
+            });
+            self.$("#phone").focusout(function() {
+                console.log('focusout')
+                window.document.body.addEventListener('keypress',self.keyboard_handler);
+                window.document.body.addEventListener('keydown',self.keyboard_keydown_handler);
+            });
             this.$el.find('.send_payment_request').click(function () {
                 var cid = $(this).data('cid');
                 // Other payment lines can not be reversed anymore
@@ -30,7 +55,7 @@ odoo.define('pos_mpesa.screens', function (require) {
                 var line = self.pos.get_order().get_paymentline(cid);
                 var payment_terminal = line.payment_method.payment_terminal;
                 // TODO: If mpesa terminal clause, do the next two lines
-                var phone = $("#phone").val(); // Capture phone number
+                var phone = self.$("#phone").val(); // Capture phone number
                 payment_terminal.set_phone(phone); // Set it to the payment terminal
                 line.set_payment_status('waiting');
                 self.render_paymentlines();
@@ -40,7 +65,7 @@ odoo.define('pos_mpesa.screens', function (require) {
                         line.set_payment_status('done');
                         line.can_be_reversed = self.payment_interface.supports_reversals;
                         self.reset_input(); // in case somebody entered a tip the amount tendered should be updated
-                        $('#phone').val(''); // Reset phone number textbox
+                        self.$('#phone').val(''); // Reset phone number textbox
                     } else {
                         line.set_payment_status('retry');
                     }
