@@ -27,6 +27,7 @@ class PosMpesaPayment(models.Model):
 
     @api.model
     def feedback(self, post):
+        _logger.info(post)
         checkout_request_id = post.get('CheckoutRequestID')
         if not checkout_request_id:
             error_msg = _('Mpesa: received data with missing reference (%s)') % (checkout_request_id)

@@ -97,6 +97,7 @@ class PosPaymentMethod(models.Model):
                 error_msg = " " + (_("MPesa gave us the following info about the problem: '%s'") % mpesa_error)
                 raise ValidationError(error_msg)
         
+        _logger.info(resp)
         self.mpesa_create_transaction(values, resp)
         return resp.json()
 
@@ -118,9 +119,6 @@ class PosPaymentMethod(models.Model):
         return json_data['access_token']
 
     def get_base_url(self):
-        # self.ensure_one()
-        # priority is always given to url_root
-        # from the request
         url = ''
         if request:
             url = request.httprequest.url_root
@@ -129,7 +127,7 @@ class PosPaymentMethod(models.Model):
     def mpesa_create_transaction(self, values, resp):
         self.env['pos.mpesa.payment'].sudo().create({
             'amount': values['Amount'],
-            'checkout_request_id': resp['CheckoutRequestID'],
+            'checkout_request_id': resp.get('CheckoutRequestID'),
             'phone_number': values['PartyA'],
             'payment_method_id': self,
         })
