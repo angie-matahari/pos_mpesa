@@ -65,6 +65,7 @@ class PosPaymentMethod(models.Model):
             }
         resp = requests.post(url, json=values, headers=headers)
         resp = resp.json()
+        return resp
 
     @api.model
     def mpesa_stk_push(self, data, test_mode, secrete_key, customer_key, short_code, pass_key):
