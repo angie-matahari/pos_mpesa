@@ -196,7 +196,7 @@ odoo.define('pos_mpesa.payment', function (require) {
                 this.pos.chrome.gui.current_screen.render_paymentlines();
                 console.log(response);
                 console.log('CheckoutRequestId: %s', response.CheckoutRequestID);
-                line.transaction_id = response.get('CheckoutRequestID');
+                line.transaction_id = response.CheckoutRequestID;
                 var self = this;
                 var res = new Promise(function (resolve, reject) {
                     // clear previous intervals just in case, otherwise
