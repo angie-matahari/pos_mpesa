@@ -47,7 +47,7 @@ class PosPaymentMethod(models.Model):
 
     # FIXME: Do we know exactly which payment_method_id we want
     @api.model
-    def get_latest_mpesa_status(self, payment_method_id, short_code, pass_key, customer_key, secrete_key, checkout_request_id, test_mode):
+    def get_latest_mpesa_status(self, short_code, pass_key, customer_key, secrete_key, checkout_request_id, test_mode):
         '''
         '''
         values = {}

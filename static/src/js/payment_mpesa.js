@@ -142,10 +142,13 @@ odoo.define('pos_mpesa.payment', function (require) {
                 model: 'pos.payment.method',
                 method: 'get_latest_mpesa_status',
                 args: [
-                    this.payment_method.id,
                     this.payment_method.mpesa_short_code,
                     this.payment_method.mpesa_pass_key,
-                    line.transaction_id
+                    this.payment_method.mpesa_customer_key,
+                    this.payment_method.mpesa_secrete_key,
+                    line.transaction_id,
+                    this.payment_method.mpesa_test_mode,
+                    
                     // FIXME: Send tx ref or order id
                 ],
             }, {
