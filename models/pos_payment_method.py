@@ -98,7 +98,7 @@ class PosPaymentMethod(models.Model):
                 raise ValidationError(error_msg)
         
         _logger.info(resp)
-        self.mpesa_create_transaction(values, resp)
+        self.mpesa_create_transaction(values, resp.json())
         return resp.json()
 
     def get_timestamp_passkey(self, short_code, pass_key):
