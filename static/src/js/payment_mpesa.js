@@ -188,6 +188,7 @@ odoo.define('pos_mpesa.payment', function (require) {
                 // paymentline changes. This way the call to
                 // set_payment_status would re-render it automatically.
                 this.pos.chrome.gui.current_screen.render_paymentlines();
+                console.log(response)
                 line.transaction_id = response.get('CheckoutRequestID');
                 var self = this;
                 var res = new Promise(function (resolve, reject) {

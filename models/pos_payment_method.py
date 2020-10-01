@@ -97,7 +97,7 @@ class PosPaymentMethod(models.Model):
                 error_msg = " " + (_("MPesa gave us the following info about the problem: '%s'") % mpesa_error)
                 raise ValidationError(error_msg)
         
-        _logger.info(resp)
+        _logger.info(resp.json())
         self.mpesa_create_transaction(values, resp.json())
         return resp.json()
 
