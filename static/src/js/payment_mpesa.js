@@ -37,6 +37,12 @@ odoo.define('pos_mpesa.payment', function (require) {
             }
             
         },
+        send_payment_cancel: function (order, cid) {
+            this._super.apply(this, arguments);
+            // set only if we are polling
+            this.was_cancelled = !!this.polling;
+            return Promise.resolve(true);
+        },
         close: function () {
             // QUESTION: What does this do?
             console.log('close')
@@ -188,8 +194,8 @@ odoo.define('pos_mpesa.payment', function (require) {
                 // paymentline changes. This way the call to
                 // set_payment_status would re-render it automatically.
                 this.pos.chrome.gui.current_screen.render_paymentlines();
-                console.log(response);
-                console.log('CheckoutRequestId: %s', response.CheckoutRequestID);
+                // console.log(response);
+                // console.log('CheckoutRequestId: %s', response.CheckoutRequestID);
                 line.transaction_id = response.get('CheckoutRequestID');
                 var self = this;
                 var res = new Promise(function (resolve, reject) {
